@@ -1,6 +1,6 @@
 --[[
-    ALLVESZZ UNIVERSAL SCRIPT V4 (GOD MODE EDITION)
-    Credits: ALLVESZZ (O Criador)
+    Allvesz UNIVERSAL SCRIPT V4 (GOD MODE EDITION)
+    Credits: Allvesz (O Criador)
     
     Update Logs:
     - Wall Check Rigoroso (Não vara parede nem grade sólida)
@@ -57,7 +57,7 @@ FOVCircle.Radius = Settings.FOVSize
 -- INTERFACE (UI) SUPER PREMIUM
 --------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AllveszzGodMode"
+ScreenGui.Name = "AllveszGodMode"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -88,27 +88,45 @@ Watermark.BackgroundTransparency = 1
 Watermark.Position = UDim2.new(0.85, -20, 0.95, -20)
 Watermark.Size = UDim2.new(0.15, 0, 0.05, 0)
 Watermark.Font = Enum.Font.GothamBlack
-Watermark.Text = "ALLVESZZ // SCRIPT"
+Watermark.Text = "ALLVESZ // SCRIPT"
 Watermark.TextColor3 = Theme.Text
 Watermark.TextSize = 18
 Watermark.TextTransparency = 0.5
 Watermark.TextXAlignment = Enum.TextXAlignment.Right
 
 -- BOTÃO ÍCONE (CAVEIRA)
+-- BLOCO DO BOTÃO COM IMAGEM EXTERNA (SUBSTITUA O ANTIGO POR ESTE)
 local OpenBtn = Instance.new("ImageButton")
 OpenBtn.Name = "SkullIcon"
 OpenBtn.Parent = ScreenGui
 OpenBtn.BackgroundColor3 = Theme.Item
 OpenBtn.Position = UDim2.new(0.02, 0, 0.45, 0)
-OpenBtn.Size = UDim2.new(0, 60, 0, 60)
--- ID de Caveira/Headshot
-OpenBtn.Image = "rbxassetid://300666687" -- Skull Icon clássico
-OpenBtn.ImageColor3 = Theme.Purple
-OpenBtn.AutoButtonColor = false
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 12)
+OpenBtn.Size = UDim2.new(0, 65, 0, 65)
+
+-- Link da imagem solicitado
+OpenBtn.Image = "https://files.catbox.moe/yekac6.jpg" 
+
+-- Ajustes para a imagem não esticar e ficar profissional
+OpenBtn.ScaleType = Enum.ScaleType.Fit
+OpenBtn.ImageColor3 = Color3.new(1, 1, 1) -- Mantém as cores originais da imagem
+OpenBtn.AutoButtonColor = true
+
+local btnCorner = Instance.new("UICorner", OpenBtn)
+btnCorner.CornerRadius = UDim.new(0, 10)
+
 local btnStroke = Instance.new("UIStroke", OpenBtn)
-btnStroke.Thickness = 2
-AddGradient(btnStroke)
+btnStroke.Thickness = 3
+btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+-- Adiciona o gradiente na borda do ícone
+local btnGradient = Instance.new("UIGradient")
+btnGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(170, 0, 255)), -- Roxo
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 40, 40))  -- Vermelho
+}
+btnGradient.Rotation = 45
+btnGradient.Parent = btnStroke
+
 
 -- Efeito de clique no ícone
 OpenBtn.MouseButton1Click:Connect(function()
@@ -158,7 +176,7 @@ Title.Size = UDim2.new(1, 0, 0.7, 0)
 Title.Position = UDim2.new(0, 0, 0.15, 0)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBlack
-Title.Text = "ALLVESZZ"
+Title.Text = "Allvesz"
 Title.TextColor3 = Theme.Text
 Title.TextSize = 24
 AddGradient(Title)
@@ -447,7 +465,7 @@ end)
 -- ESP OTIMIZADO
 --------------------------------------------------------------------
 local ESPGroup = Instance.new("Folder", game.CoreGui)
-ESPGroup.Name = "AllveszzESP"
+ESPGroup.Name = "AllveszESP"
 
 spawn(function()
     while wait(0.5) do
@@ -484,7 +502,7 @@ end)
 
 -- Notificação de Carregamento
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "ALLVESZZ V4",
+    Title = "Allvesz V4",
     Text = "Script Carregado com Sucesso!",
     Duration = 5
 })
