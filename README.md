@@ -17,4 +17,4 @@ Um script de Aimbot Universal para Roblox, projetado para ser leve, funcional e 
 Para usar o script, copie o código abaixo e cole no seu executor de preferência:
 
 ```lua
-loadstring(game:HttpGet("[https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/UniversalAimbot.lua](https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/UniversalAimbot.lua)"))()
+loadstring(game:HttpGet("https://github.com/rigby-collqb/aim-bot-allveszz/blob/main/aim.lua"))()
