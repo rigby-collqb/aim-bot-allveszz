@@ -1,11 +1,7 @@
 --[[
-    UNIVERSAL AIMBOT SCRIPT
+    ALLVESZZ UNIVERSAL SCRIPT V2 (Premium Edition)
+    Theme: Red/Purple/Black
     Credits: Allveszz
-    
-    Instruções:
-    1. Salve este código em um arquivo (ex: main.lua) no seu GitHub.
-    2. Pegue o link "Raw" do arquivo.
-    3. Execute com: loadstring(game:HttpGet("SEU_LINK_RAW_AQUI"))()
 ]]
 
 local Players = game:GetService("Players")
@@ -14,222 +10,320 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
 
--- Configurações Iniciais
+-- Cores do Tema
+local Theme = {
+    Background = Color3.fromRGB(15, 15, 15),
+    DarkContrast = Color3.fromRGB(25, 25, 25),
+    Purple = Color3.fromRGB(170, 0, 255),
+    Red = Color3.fromRGB(255, 50, 50),
+    Text = Color3.fromRGB(240, 240, 240)
+}
+
+-- Configurações
 local Settings = {
-    AimbotEnabled = false,
-    FOV = 100,
+    Aimbot = true,
+    ESP = true,
     TeamCheck = false,
     WallCheck = false,
     AliveCheck = true,
-    Smoothness = 0.5, -- Quanto menor, mais rápido (0 a 1)
-    TargetPart = "Head" -- Parte do corpo para mirar
+    FOVSize = 100,
+    Smoothness = 0.2,
+    TargetPart = "Head"
 }
 
-local FOV_Circle = Drawing.new("Circle")
-FOV_Circle.Color = Color3.fromRGB(255, 255, 255)
-FOV_Circle.Thickness = 1
-FOV_Circle.NumSides = 60
-FOV_Circle.Radius = Settings.FOV
-FOV_Circle.Filled = false
-FOV_Circle.Visible = false
+-- Variáveis de Controle
+local Holding = false
+local AimTarget = nil
+
+-- FOV Circle (Usando Drawing API para performance)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = true
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Theme.Purple
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.NumSides = 64
+FOVCircle.Radius = Settings.FOVSize
 
 --------------------------------------------------------------------
--- CRIAÇÃO DA INTERFACE (GUI) - Feita à mão para ser Universal
+-- GUI / INTERFACE (DESIGN PROFISSIONAL)
 --------------------------------------------------------------------
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AllveszzUniversalGUI"
+ScreenGui.Name = "AllveszzPremium"
 ScreenGui.Parent = game.CoreGui
 
--- Botão de Abrir/Fechar (Ícone)
-local OpenButton = Instance.new("TextButton")
-OpenButton.Name = "OpenButton"
-OpenButton.Parent = ScreenGui
-OpenButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-OpenButton.Position = UDim2.new(0.1, 0, 0.1, 0)
-OpenButton.Size = UDim2.new(0, 50, 0, 50)
-OpenButton.Font = Enum.Font.GothamBold
-OpenButton.Text = "A"
-OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenButton.TextSize = 24.000
-OpenButton.AutoButtonColor = false
+-- Efeito de Gradiente Global
+local function AddGradient(instance)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Theme.Purple),
+        ColorSequenceKeypoint.new(1.00, Theme.Red)
+    }
+    gradient.Rotation = 45
+    gradient.Parent = instance
+    return gradient
+end
 
-local UICornerBtn = Instance.new("UICorner")
-UICornerBtn.CornerRadius = UDim.new(1, 0)
-UICornerBtn.Parent = OpenButton
+-- 1. Botão Ícone (Flutuante)
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Name = "ToggleIcon"
+OpenBtn.Parent = ScreenGui
+OpenBtn.BackgroundColor3 = Theme.DarkContrast
+OpenBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Text = "A"
+OpenBtn.Font = Enum.Font.GothamBlack
+OpenBtn.TextColor3 = Theme.Text
+OpenBtn.TextSize = 28
+OpenBtn.AutoButtonColor = false
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+local btnStroke = Instance.new("UIStroke", OpenBtn)
+btnStroke.Thickness = 2
+AddGradient(btnStroke)
 
--- Janela Principal (Main Frame)
+-- 2. Janela Principal
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 250, 0, 320)
-MainFrame.Visible = false -- Começa fechado
+MainFrame.BackgroundColor3 = Theme.Background
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 300, 0, 380)
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
-local UICornerMain = Instance.new("UICorner")
-UICornerMain.CornerRadius = UDim.new(0, 10)
-UICornerMain.Parent = MainFrame
+-- Borda da Janela
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Thickness = 2
+AddGradient(MainStroke)
 
--- Título / Créditos
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Title.BackgroundTransparency = 1.000
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "Allveszz Script"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18.000
+-- Título
+local Header = Instance.new("Frame")
+Header.Parent = MainFrame
+Header.BackgroundColor3 = Theme.DarkContrast
+Header.Size = UDim2.new(1, 0, 0, 50)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
 
--- Função para arrastar a janela (Draggable)
+local TitleText = Instance.new("TextLabel")
+TitleText.Parent = Header
+TitleText.BackgroundTransparency = 1
+TitleText.Size = UDim2.new(1, 0, 1, 0)
+TitleText.Font = Enum.Font.GothamBlack
+TitleText.Text = "ALLVESZZ // UNIVERSAL"
+TitleText.TextColor3 = Theme.Text
+TitleText.TextSize = 16
+AddGradient(TitleText) -- Texto gradiente
+
+-- Arrastar Janela
 local dragging, dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
     end
 end)
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+Header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then update(input) end
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+Header.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- Função auxiliar para criar botões
-local layoutOrder = 0
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = MainFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+-- Container dos Botões
+local Container = Instance.new("ScrollingFrame")
+Container.Parent = MainFrame
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(0, 0, 0, 60)
+Container.Size = UDim2.new(1, 0, 1, -70)
+Container.ScrollBarThickness = 2
+Container.CanvasSize = UDim2.new(0, 0, 1.2, 0) -- Espaço extra
 
--- Espaçador para o título
-local Spacer = Instance.new("Frame")
-Spacer.Parent = MainFrame
-Spacer.BackgroundTransparency = 1
-Spacer.Size = UDim2.new(1,0,0,35)
-Spacer.LayoutOrder = -1
+local Layout = Instance.new("UIListLayout")
+Layout.Parent = Container
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0, 8)
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-local function CreateToggle(name, text, default, callback)
+-- Função Criadora de Toggles Estilizados
+local function CreateToggle(text, refName, defaultVal, callback)
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Name = name
-    ToggleBtn.Parent = MainFrame
-    ToggleBtn.BackgroundColor3 = default and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
-    ToggleBtn.Size = UDim2.new(0, 220, 0, 35)
-    ToggleBtn.Font = Enum.Font.GothamSemibold
-    ToggleBtn.Text = text .. ": " .. (default and "ON" or "OFF")
-    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleBtn.TextSize = 14.000
-    ToggleBtn.LayoutOrder = layoutOrder
-    layoutOrder = layoutOrder + 1
-
-    local UICornerToggle = Instance.new("UICorner")
-    UICornerToggle.CornerRadius = UDim.new(0, 6)
-    UICornerToggle.Parent = ToggleBtn
-
+    ToggleBtn.Parent = Container
+    ToggleBtn.BackgroundColor3 = Theme.DarkContrast
+    ToggleBtn.Size = UDim2.new(0, 260, 0, 40)
+    ToggleBtn.Text = ""
+    ToggleBtn.AutoButtonColor = false
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+    
+    local Label = Instance.new("TextLabel")
+    Label.Parent = ToggleBtn
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.Size = UDim2.new(0.7, 0, 1, 0)
+    Label.Font = Enum.Font.GothamBold
+    Label.Text = text
+    Label.TextColor3 = Theme.Text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextSize = 14
+    
+    local Status = Instance.new("Frame")
+    Status.Parent = ToggleBtn
+    Status.Position = UDim2.new(0.85, 0, 0.5, -8)
+    Status.Size = UDim2.new(0, 16, 0, 16)
+    Status.BackgroundColor3 = defaultVal and Theme.Purple or Color3.fromRGB(60,60,60)
+    Instance.new("UICorner", Status).CornerRadius = UDim.new(0, 4)
+    
     ToggleBtn.MouseButton1Click:Connect(function()
-        local newState = not (ToggleBtn.BackgroundColor3 == Color3.fromRGB(0, 170, 0))
-        ToggleBtn.BackgroundColor3 = newState and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(45, 45, 45)
-        ToggleBtn.Text = text .. ": " .. (newState and "ON" or "OFF")
+        local newState = not (Status.BackgroundColor3 == Theme.Purple)
+        Status.BackgroundColor3 = newState and Theme.Purple or Color3.fromRGB(60,60,60)
+        
+        -- Efeito visual extra no botão
+        if newState then
+            Status.BackgroundColor3 = Theme.Red
+            wait(0.1)
+            Status.BackgroundColor3 = Theme.Purple
+        end
         callback(newState)
     end)
 end
 
--- Criando as Opções
-CreateToggle("ToggleAimbot", "Ativar Aimbot", Settings.AimbotEnabled, function(s) Settings.AimbotEnabled = s end)
-CreateToggle("ToggleTeam", "Team Check", Settings.TeamCheck, function(s) Settings.TeamCheck = s end)
-CreateToggle("ToggleWall", "Wall Check", Settings.WallCheck, function(s) Settings.WallCheck = s end)
-CreateToggle("ToggleAlive", "Alive Check", Settings.AliveCheck, function(s) Settings.AliveCheck = s end)
-CreateToggle("ToggleFOVDraw", "Mostrar FOV", false, function(s) FOV_Circle.Visible = s end)
+-- Slider de FOV (Input Box estilizado)
+local function CreateFOVInput()
+    local BoxFrame = Instance.new("Frame")
+    BoxFrame.Parent = Container
+    BoxFrame.BackgroundColor3 = Theme.DarkContrast
+    BoxFrame.Size = UDim2.new(0, 260, 0, 40)
+    Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
+    
+    local Label = Instance.new("TextLabel")
+    Label.Parent = BoxFrame
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.Size = UDim2.new(0.5, 0, 1, 0)
+    Label.Font = Enum.Font.GothamBold
+    Label.Text = "FOV Radius"
+    Label.TextColor3 = Theme.Text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextSize = 14
+    
+    local Input = Instance.new("TextBox")
+    Input.Parent = BoxFrame
+    Input.BackgroundTransparency = 1
+    Input.Position = UDim2.new(0.6, 0, 0, 0)
+    Input.Size = UDim2.new(0.35, 0, 1, 0)
+    Input.Font = Enum.Font.GothamBold
+    Input.Text = tostring(Settings.FOVSize)
+    Input.TextColor3 = Theme.Red
+    Input.TextSize = 14
+    
+    Input.FocusLost:Connect(function()
+        local num = tonumber(Input.Text)
+        if num then
+            Settings.FOVSize = num
+            FOVCircle.Radius = num
+        end
+    end)
+end
 
--- Slider simples para FOV (Input Box)
-local FOVBox = Instance.new("TextBox")
-FOVBox.Parent = MainFrame
-FOVBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-FOVBox.Size = UDim2.new(0, 220, 0, 35)
-FOVBox.Font = Enum.Font.GothamSemibold
-FOVBox.PlaceholderText = "FOV (Ex: 100)"
-FOVBox.Text = "FOV: " .. Settings.FOV
-FOVBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVBox.TextSize = 14.000
-FOVBox.LayoutOrder = layoutOrder
+-- Criando os Controles
+CreateToggle("AIMBOT ENABLED", "aim_tog", Settings.Aimbot, function(v) Settings.Aimbot = v end)
+CreateToggle("ESP NAMES", "esp_tog", Settings.ESP, function(v) Settings.ESP = v end)
+CreateToggle("TEAM CHECK", "team_tog", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
+CreateToggle("WALL CHECK", "wall_tog", Settings.WallCheck, function(v) Settings.WallCheck = v end)
+CreateToggle("ALIVE CHECK", "alive_tog", Settings.AliveCheck, function(v) Settings.AliveCheck = v end)
+CreateFOVInput()
 
-local UICornerFOV = Instance.new("UICorner")
-UICornerFOV.CornerRadius = UDim.new(0, 6)
-UICornerFOV.Parent = FOVBox
-
-FOVBox.FocusLost:Connect(function()
-    local num = tonumber(FOVBox.Text)
-    if num then
-        Settings.FOV = num
-        FOV_Circle.Radius = num
-        FOVBox.Text = "FOV: " .. num
-    else
-        FOVBox.Text = "FOV: " .. Settings.FOV
-    end
-end)
-
--- Lógica do Botão Abrir/Fechar
-OpenButton.MouseButton1Click:Connect(function()
+OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
 --------------------------------------------------------------------
--- LÓGICA DO AIMBOT
+-- LÓGICA DO AIMBOT & ESP
 --------------------------------------------------------------------
 
-local function IsVisible(targetPart)
-    if not Settings.WallCheck then return true end
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+-- Função de ESP (BillboardGui)
+local ESP_Folder = Instance.new("Folder", game.CoreGui)
+ESP_Folder.Name = "Allveszz_ESP_Folder"
 
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    if result then
-        return result.Instance:IsDescendantOf(targetPart.Parent)
-    end
-    return false
-end
-
-local function GetClosestPlayer()
-    local closestDist = math.huge
-    local target = nil
+local function UpdateESP()
+    -- Limpa ESPs antigos
+    ESP_Folder:ClearAllChildren()
+    
+    if not Settings.ESP then return end
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            -- Checks
+            if Settings.AliveCheck and player.Character.Humanoid.Health <= 0 then continue end
+            if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+            local Head = player.Character.Head
+            
+            local bb = Instance.new("BillboardGui")
+            bb.Parent = ESP_Folder
+            bb.Adornee = Head
+            bb.Size = UDim2.new(0, 100, 0, 50)
+            bb.StudsOffset = Vector3.new(0, 2, 0)
+            bb.AlwaysOnTop = true
+
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Parent = bb
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Size = UDim2.new(1, 0, 1, 0)
+            nameLabel.Text = player.Name
+            nameLabel.Font = Enum.Font.GothamBold
+            nameLabel.TextSize = 14
+            -- Cor Vermelha para inimigos, branca padrão
+            nameLabel.TextColor3 = (player.Team ~= LocalPlayer.Team) and Theme.Red or Color3.new(1,1,1)
+            nameLabel.TextStrokeTransparency = 0.5
+        end
+    end
+end
+
+-- Lógica de Aimbot Centralizado
+local function GetClosestToCenter()
+    local closestDist = math.huge
+    local target = nil
+    
+    local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(Settings.TargetPart) then
             local char = player.Character
-            if char and char:FindFirstChild(Settings.TargetPart) and char:FindFirstChild("Humanoid") then
+            local hum = char:FindFirstChild("Humanoid")
+            
+            if Settings.AliveCheck and hum.Health <= 0 then continue end
+            if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+            local partPos, onScreen = Camera:WorldToViewportPoint(char[Settings.TargetPart].Position)
+            
+            if onScreen then
+                local dist = (Vector2.new(partPos.X, partPos.Y) - Center).Magnitude
                 
-                -- Checks
-                if Settings.AliveCheck and char.Humanoid.Health <= 0 then continue end
-                if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
-                
-                local headPos, onScreen = Camera:WorldToViewportPoint(char[Settings.TargetPart].Position)
-                
-                if onScreen then
-                    local mouseDist = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(headPos.X, headPos.Y)).Magnitude
-                    
-                    if mouseDist < Settings.FOV and mouseDist < closestDist then
-                        if IsVisible(char[Settings.TargetPart]) then
-                            closestDist = mouseDist
+                -- Verifica se está dentro do FOV e é o mais próximo
+                if dist < Settings.FOVSize and dist < closestDist then
+                    -- Wall Check
+                    if Settings.WallCheck then
+                        local origin = Camera.CFrame.Position
+                        local dir = (char[Settings.TargetPart].Position - origin).Unit * (dist + 5) -- pequeno buffer
+                        local params = RaycastParams.new()
+                        params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+                        params.FilterType = Enum.RaycastFilterType.Exclude
+                        
+                        local result = Workspace:Raycast(origin, dir, params)
+                        if result and result.Instance:IsDescendantOf(char) then
+                            closestDist = dist
                             target = char[Settings.TargetPart]
                         end
+                    else
+                        closestDist = dist
+                        target = char[Settings.TargetPart]
                     end
                 end
             end
@@ -238,16 +332,29 @@ local function GetClosestPlayer()
     return target
 end
 
+-- Loops Principais
 RunService.RenderStepped:Connect(function()
-    -- Atualiza posição do círculo do FOV
-    FOV_Circle.Position = UserInputService:GetMouseLocation()
+    -- Manter FOV no centro
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    FOVCircle.Radius = Settings.FOVSize
     
-    if Settings.AimbotEnabled then
-        local target = GetClosestPlayer()
+    -- Aimbot
+    if Settings.Aimbot then
+        local target = GetClosestToCenter()
         if target then
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), Settings.Smoothness)
+            -- Suavização da câmera (Lerp)
+            local currentCFrame = Camera.CFrame
+            local targetCFrame = CFrame.new(currentCFrame.Position, target.Position)
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, Settings.Smoothness)
         end
     end
 end)
 
-print("Allveszz Universal Script Loaded")
+-- Atualiza o ESP a cada meio segundo para não lagar
+spawn(function()
+    while wait(0.5) do
+        pcall(UpdateESP)
+    end
+end)
+
+print("Allveszz V2 Loaded")
