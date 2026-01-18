@@ -1,12 +1,12 @@
 --[[
-    Allvesz UNIVERSAL SCRIPT V4 (GOD MODE EDITION)
+    Allvesz UNIVERSAL SCRIPT V5 (GOD MODE + ANTI-LAG EDITION)
     Credits: Allvesz (O Criador)
     
     Update Logs:
-    - Wall Check Rigoroso (Não vara parede nem grade sólida)
-    - Ícone de Caveira (Headshot)
-    - UI Animada com TweenService
-    - Marca d'água Permanente
+    - Ícone de Caveira Corrigido (Asset ID Nativo)
+    - Anti-Lag "Destruidor" adicionado
+    - ESP Reescrito (Não pisca, não some)
+    - FOV Corrigido
 ]]
 
 local Players = game:GetService("Players")
@@ -14,9 +14,20 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
+
+-- Limpeza preventiva de UI antiga
+if CoreGui:FindFirstChild("AllveszGodMode") then
+    CoreGui.AllveszGodMode:Destroy()
+end
+
+if CoreGui:FindFirstChild("AllveszESP") then
+    CoreGui.AllveszESP:Destroy()
+end
 
 -- Sistema de Cores
 local ColorList = {
@@ -31,34 +42,100 @@ local Settings = {
     Aimbot = true,
     ESP = true,
     TeamCheck = false,
-    WallCheck = true, -- Agora RIGOROSO
+    WallCheck = true,
     AliveCheck = true,
     ShowFOV = true,
     FOVSize = 120,
     TargetPart = "Head",
     FOVColorIndex = 2, -- Roxo
-    ESPColorIndex = 1  -- Vermelho
+    ESPColorIndex = 1,  -- Vermelho
+    AntiLag = false
 }
 
 -- Variáveis Globais
 local LockedTarget = nil
+local ESPContainer = {} -- Tabela para gerenciar ESP sem flickering
 
--- FOV Circle
+-- FOV Circle (Usando Drawing API)
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = Settings.ShowFOV
-FOVCircle.Thickness = 1.5
+FOVCircle.Thickness = 2
 FOVCircle.Color = ColorList[Settings.FOVColorIndex].Color
 FOVCircle.Filled = false
-FOVCircle.Transparency = 0.8
+FOVCircle.Transparency = 1
 FOVCircle.NumSides = 64
 FOVCircle.Radius = Settings.FOVSize
+
+--------------------------------------------------------------------
+-- SISTEMA ANTI-LAG (OTIMIZAÇÃO EXTREMA)
+--------------------------------------------------------------------
+local function ActivateAntiLag()
+    -- Notificação
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Anti-Lag",
+        Text = "Otimizando... Aguarde a travada.",
+        Duration = 3
+    })
+    
+    wait(0.1) -- Pequeno delay para a UI não congelar antes da notificação
+    
+    -- 1. Otimização de Iluminação
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 2
+    
+    for _, v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
+            v.Enabled = false
+        end
+    end
+
+    -- 2. Otimização do Terreno
+    if workspace:FindFirstChild("Terrain") then
+        workspace.Terrain.WaterWaveSize = 0
+        workspace.Terrain.WaterReflectance = 0
+        workspace.Terrain.WaterTransparency = 1
+    end
+
+    -- 3. Otimização de Partes e Materiais
+    -- Usamos GetDescendants para pegar tudo. Pode travar por 1-2 segundos.
+    for _, v in pairs(workspace:GetDescendants()) do
+        -- Ignora o jogador local para não ficar feio pra você
+        if v:IsDescendantOf(LocalPlayer.Character) then continue end
+        
+        if v:IsA("BasePart") and not v:IsA("Terrain") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+            v.CastShadow = false
+            -- v.TopSurface = Enum.SurfaceType.Smooth -- (Depreciado, mas útil em jogos antigos)
+            
+            -- Se for MeshPart, remove a textura para ganhar MUITO FPS
+            if v:IsA("MeshPart") then
+                v.TextureID = "" 
+            end
+            
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            -- Remove logos, sujeira no chão, detalhes de parede
+            v.Transparency = 1
+            
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+            v.Enabled = false
+        end
+    end
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Sucesso",
+        Text = "FPS Boost Ativado!",
+        Duration = 3
+    })
+end
 
 --------------------------------------------------------------------
 -- INTERFACE (UI) SUPER PREMIUM
 --------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AllveszGodMode"
-ScreenGui.Parent = game.CoreGui
+ScreenGui.Parent = CoreGui -- Usar CoreGui protege contra alguns jogos que limpam PlayerGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Theme = {
@@ -69,7 +146,6 @@ local Theme = {
     Text = Color3.fromRGB(255, 255, 255)
 }
 
--- Gradiente Funções
 local function AddGradient(obj)
     local g = Instance.new("UIGradient")
     g.Color = ColorSequence.new{
@@ -81,72 +157,48 @@ local function AddGradient(obj)
     return g
 end
 
--- MARCA D'ÁGUA (CRÉDITOS EXPOSTOS)
+-- MARCA D'ÁGUA
 local Watermark = Instance.new("TextLabel")
 Watermark.Parent = ScreenGui
 Watermark.BackgroundTransparency = 1
 Watermark.Position = UDim2.new(0.85, -20, 0.95, -20)
 Watermark.Size = UDim2.new(0.15, 0, 0.05, 0)
 Watermark.Font = Enum.Font.GothamBlack
-Watermark.Text = "ALLVESZ // SCRIPT"
+Watermark.Text = "ALLVESZ // V5"
 Watermark.TextColor3 = Theme.Text
 Watermark.TextSize = 18
 Watermark.TextTransparency = 0.5
 Watermark.TextXAlignment = Enum.TextXAlignment.Right
 
--- BOTÃO ÍCONE (CAVEIRA)
--- BLOCO DO BOTÃO COM IMAGEM EXTERNA (SUBSTITUA O ANTIGO POR ESTE)
+-- BOTÃO ÍCONE (CAVEIRA CORRIGIDA)
 local OpenBtn = Instance.new("ImageButton")
 OpenBtn.Name = "SkullIcon"
 OpenBtn.Parent = ScreenGui
 OpenBtn.BackgroundColor3 = Theme.Item
 OpenBtn.Position = UDim2.new(0.02, 0, 0.45, 0)
-OpenBtn.Size = UDim2.new(0, 65, 0, 65)
+OpenBtn.Size = UDim2.new(0, 60, 0, 60)
 
--- Link da imagem solicitado
-OpenBtn.Image = "https://files.catbox.moe/yekac6.jpg" 
+-- ID DO ROBLOX FUNCIONAL PARA CAVEIRA
+OpenBtn.Image = "rbxassetid://10469032608" -- Ícone de Caveira Estilizada
 
--- Ajustes para a imagem não esticar e ficar profissional
 OpenBtn.ScaleType = Enum.ScaleType.Fit
-OpenBtn.ImageColor3 = Color3.new(1, 1, 1) -- Mantém as cores originais da imagem
+OpenBtn.ImageColor3 = Color3.new(1, 1, 1)
 OpenBtn.AutoButtonColor = true
 
 local btnCorner = Instance.new("UICorner", OpenBtn)
 btnCorner.CornerRadius = UDim.new(0, 10)
 
 local btnStroke = Instance.new("UIStroke", OpenBtn)
-btnStroke.Thickness = 3
+btnStroke.Thickness = 2
 btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Adiciona o gradiente na borda do ícone
 local btnGradient = Instance.new("UIGradient")
 btnGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(170, 0, 255)), -- Roxo
-    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 40, 40))  -- Vermelho
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(170, 0, 255)), 
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 40, 40))
 }
 btnGradient.Rotation = 45
 btnGradient.Parent = btnStroke
-
-
--- Efeito de clique no ícone
-OpenBtn.MouseButton1Click:Connect(function()
-    local targetPos = UDim2.new(0.5, -160, 0.5, -225)
-    local mainFrame = ScreenGui:FindFirstChild("MainFrame")
-    
-    if mainFrame.Visible then
-        -- Animação de Fechar
-        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1})
-        tween:Play()
-        tween.Completed:Connect(function() mainFrame.Visible = false end)
-    else
-        -- Animação de Abrir
-        mainFrame.Visible = true
-        mainFrame.Size = UDim2.new(0, 0, 0, 0)
-        mainFrame.BackgroundTransparency = 1
-        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 320, 0, 450), BackgroundTransparency = 0.05})
-        tween:Play()
-    end
-end)
 
 -- JANELA PRINCIPAL
 local MainFrame = Instance.new("Frame")
@@ -154,7 +206,7 @@ MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Theme.Bg
 MainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
-MainFrame.Size = UDim2.new(0, 320, 0, 450)
+MainFrame.Size = UDim2.new(0, 320, 0, 480) -- Aumentei um pouco para caber o botão novo
 MainFrame.Visible = false
 MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
@@ -162,7 +214,22 @@ local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Thickness = 2
 AddGradient(MainStroke)
 
--- Título Gigante
+-- Lógica de Abrir/Fechar
+OpenBtn.MouseButton1Click:Connect(function()
+    if MainFrame.Visible then
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1})
+        tween:Play()
+        tween.Completed:Connect(function() MainFrame.Visible = false end)
+    else
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.BackgroundTransparency = 1
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 320, 0, 480), BackgroundTransparency = 0.05})
+        tween:Play()
+    end
+end)
+
+-- Título
 local Header = Instance.new("Frame")
 Header.Parent = MainFrame
 Header.BackgroundColor3 = Color3.new(0,0,0)
@@ -187,7 +254,7 @@ SubTitle.Size = UDim2.new(1, 0, 0.3, 0)
 SubTitle.Position = UDim2.new(0, 0, 0.7, 0)
 SubTitle.BackgroundTransparency = 1
 SubTitle.Font = Enum.Font.Code
-SubTitle.Text = "PREMIUM UNIVERSAL // V4"
+SubTitle.Text = "GOD MODE // V5"
 SubTitle.TextColor3 = Color3.fromRGB(150, 150, 150)
 SubTitle.TextSize = 11
 
@@ -218,7 +285,7 @@ Container.BackgroundTransparency = 1
 Container.Position = UDim2.new(0, 0, 0, 70)
 Container.Size = UDim2.new(1, 0, 1, -80)
 Container.ScrollBarThickness = 3
-Container.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+Container.CanvasSize = UDim2.new(0, 0, 1.6, 0) -- Aumentado para scroll
 
 local Layout = Instance.new("UIListLayout")
 Layout.Parent = Container
@@ -226,7 +293,7 @@ Layout.SortOrder = Enum.SortOrder.LayoutOrder
 Layout.Padding = UDim.new(0, 6)
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Helper Toggle
+-- Toggle Helper
 local function CreateToggle(text, defaultVal, callback)
     local Btn = Instance.new("TextButton")
     Btn.Parent = Container
@@ -254,7 +321,6 @@ local function CreateToggle(text, defaultVal, callback)
     Indicator.BackgroundColor3 = defaultVal and Theme.Purple or Color3.fromRGB(50,50,50)
     Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
     
-    -- Stroke no indicador
     local indStroke = Instance.new("UIStroke", Indicator)
     indStroke.Thickness = 1
     indStroke.Color = Color3.fromRGB(80,80,80)
@@ -263,7 +329,6 @@ local function CreateToggle(text, defaultVal, callback)
         local isOn = (Indicator.BackgroundColor3 == Theme.Purple)
         local newState = not isOn
         
-        -- Animação Simples
         if newState then
             Indicator.BackgroundColor3 = Theme.Purple
             indStroke.Color = Theme.Red
@@ -275,7 +340,7 @@ local function CreateToggle(text, defaultVal, callback)
     end)
 end
 
--- Helper Color Picker
+-- Color Helper
 local function CreateColorSelector(text, key, callback)
     local Btn = Instance.new("TextButton")
     Btn.Parent = Container
@@ -318,7 +383,7 @@ local function CreateColorSelector(text, key, callback)
     end)
 end
 
--- Input de FOV
+-- Input FOV
 local function CreateFOVInput()
     local Frame = Instance.new("Frame")
     Frame.Parent = Container
@@ -356,60 +421,68 @@ local function CreateFOVInput()
     end)
 end
 
--- Criando Botões
+-- Botão de Ação (Para Anti-Lag)
+local function CreateActionButton(text, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Parent = Container
+    Btn.BackgroundColor3 = Color3.fromRGB(40, 20, 20) -- Cor diferente para destaque
+    Btn.Size = UDim2.new(0, 290, 0, 38)
+    Btn.Text = text
+    Btn.Font = Enum.Font.GothamBlack
+    Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    Btn.TextSize = 14
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+    
+    local str = Instance.new("UIStroke", Btn)
+    str.Color = Color3.fromRGB(255, 40, 40)
+    str.Thickness = 1
+    str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    
+    Btn.MouseButton1Click:Connect(callback)
+end
+
+-- CRIANDO OS BOTÕES
 CreateToggle("ATIVAR AIMBOT", Settings.Aimbot, function(v) Settings.Aimbot = v end)
 CreateToggle("WALL CHECK (RIGOROSO)", Settings.WallCheck, function(v) Settings.WallCheck = v end)
 CreateFOVInput()
 CreateToggle("DESENHAR FOV", Settings.ShowFOV, function(v) Settings.ShowFOV = v; FOVCircle.Visible = v end)
 CreateColorSelector("COR DO FOV", "FOVColorIndex", function(c) FOVCircle.Color = c end)
-CreateToggle("ESP NOMES", Settings.ESP, function(v) Settings.ESP = v end)
-CreateColorSelector("COR DO ESP", "ESPColorIndex", function(c) end) -- Loop trata isso
+CreateToggle("ESP NOMES (PERSISTENTE)", Settings.ESP, function(v) Settings.ESP = v end)
+CreateColorSelector("COR DO ESP", "ESPColorIndex", function(c) end)
 CreateToggle("CHECK DE TIME", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
 
---------------------------------------------------------------------
--- LÓGICA DO AIMBOT REFORÇADA (WALLCHECK FIX)
---------------------------------------------------------------------
+-- BOTÃO NOVO: ANTI-LAG
+CreateActionButton("DESTRUIR LAG (FPS BOOST)", function()
+    ActivateAntiLag()
+end)
 
+
+--------------------------------------------------------------------
+-- LÓGICA DO AIMBOT
+--------------------------------------------------------------------
 local function IsPathClear(targetPart)
     if not Settings.WallCheck then return true end
-    
     local Origin = Camera.CFrame.Position
     local Direction = targetPart.Position - Origin
-    
-    -- Raycast Parameters RIGOROSOS
     local Params = RaycastParams.new()
     Params.FilterType = Enum.RaycastFilterType.Exclude
-    -- Ignora o jogador local e a câmera, mas detecta TODO o resto
     Params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    Params.IgnoreWater = false -- Água bloqueia bala? Depende, mas vamos deixar false.
-    
+    Params.IgnoreWater = false
     local Result = Workspace:Raycast(Origin, Direction, Params)
-    
     if Result then
-        -- Se o raio bateu em algo
-        if Result.Instance:IsDescendantOf(targetPart.Parent) then
-            -- Se bateu no inimigo, tá limpo
-            return true
-        else
-            -- Se bateu em qualquer outra coisa (parede, grade, chão)
-            -- Bloqueia IMEDIATAMENTE.
-            return false 
-        end
+        if Result.Instance:IsDescendantOf(targetPart.Parent) then return true end
+        return false 
     end
-    
     return true
 end
 
 local function GetTarget()
-    -- Prioriza o alvo que já estamos travados (Anti-Tremor)
     if LockedTarget and LockedTarget.Parent and LockedTarget.Parent:FindFirstChild("Humanoid") then
         local Hum = LockedTarget.Parent.Humanoid
         if Hum.Health > 0 and IsPathClear(LockedTarget) then
             local pos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Position)
             local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-            if onScreen and dist <= Settings.FOVSize then
-                return LockedTarget
-            end
+            if onScreen and dist <= Settings.FOVSize then return LockedTarget end
         end
     end
 
@@ -421,9 +494,7 @@ local function GetTarget()
         if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(Settings.TargetPart) then
             local Char = v.Character
             local Hum = Char:FindFirstChild("Humanoid")
-            
-            -- Checks básicos
-            if Settings.AliveCheck and Hum.Health <= 0 then continue end
+            if Settings.AliveCheck and Hum and Hum.Health <= 0 then continue end
             if Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
             
             local Part = Char[Settings.TargetPart]
@@ -431,9 +502,7 @@ local function GetTarget()
             
             if OnScreen then
                 local Dist = (Vector2.new(Pos.X, Pos.Y) - Center).Magnitude
-                
                 if Dist < Settings.FOVSize and Dist < MinDist then
-                    -- Wall Check na seleção do alvo
                     if IsPathClear(Part) then
                         MinDist = Dist
                         Closest = Part
@@ -442,67 +511,53 @@ local function GetTarget()
             end
         end
     end
-    
     LockedTarget = Closest
     return Closest
 end
 
-RunService.RenderStepped:Connect(function()
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    FOVCircle.Radius = Settings.FOVSize
-    
-    if Settings.Aimbot then
-        local T = GetTarget()
-        if T then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, T.Position)
-        end
-    else
-        LockedTarget = nil
+--------------------------------------------------------------------
+-- ESP OTIMIZADO (SEM PISCAR)
+--------------------------------------------------------------------
+local ESPFolder = Instance.new("Folder", CoreGui)
+ESPFolder.Name = "AllveszESP"
+
+local function UpdateESP()
+    if not Settings.ESP then 
+        ESPFolder:ClearAllChildren()
+        return 
     end
-end)
 
---------------------------------------------------------------------
--- ESP OTIMIZADO
---------------------------------------------------------------------
-local ESPGroup = Instance.new("Folder", game.CoreGui)
-ESPGroup.Name = "AllveszESP"
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
+            -- Verificações
+            if Settings.AliveCheck and v.Character.Humanoid.Health <= 0 then 
+                if ESPFolder:FindFirstChild(v.Name) then ESPFolder[v.Name]:Destroy() end
+                continue 
+            end
+            if Settings.TeamCheck and v.Team == LocalPlayer.Team then 
+                if ESPFolder:FindFirstChild(v.Name) then ESPFolder[v.Name]:Destroy() end
+                continue 
+            end
 
-spawn(function()
-    while wait(0.5) do
-        ESPGroup:ClearAllChildren()
-        if not Settings.ESP then continue end
-        
-        local CorAtual = ColorList[Settings.ESPColorIndex].Color
-        
-        for _, v in pairs(Players:GetPlayers()) do
-            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
-                if Settings.AliveCheck and v.Character.Humanoid.Health <= 0 then continue end
-                if Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
-                
-                local bb = Instance.new("BillboardGui")
-                bb.Parent = ESPGroup
-                bb.Adornee = v.Character.Head
-                bb.Size = UDim2.new(0, 100, 0, 50)
-                bb.StudsOffset = Vector3.new(0, 2, 0)
-                bb.AlwaysOnTop = true
+            -- Cria ou Atualiza
+            local BB = ESPFolder:FindFirstChild(v.Name)
+            if not BB then
+                BB = Instance.new("BillboardGui")
+                BB.Name = v.Name
+                BB.Parent = ESPFolder
+                BB.Size = UDim2.new(0, 100, 0, 50)
+                BB.StudsOffset = Vector3.new(0, 2, 0)
+                BB.AlwaysOnTop = true
                 
                 local txt = Instance.new("TextLabel")
-                txt.Parent = bb
+                txt.Parent = BB
                 txt.Size = UDim2.new(1, 0, 1, 0)
                 txt.BackgroundTransparency = 1
                 txt.Text = v.Name
-                txt.TextColor3 = CorAtual
                 txt.Font = Enum.Font.GothamBlack
                 txt.TextSize = 12
                 txt.TextStrokeTransparency = 0.5
+                txt.Name = "Label"
             end
-        end
-    end
-end)
-
--- Notificação de Carregamento
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Allvesz V4",
-    Text = "Script Carregado com Sucesso!",
-    Duration = 5
-})
+            
+            -- Sincronizar Adornee e C
