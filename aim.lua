@@ -1,8 +1,10 @@
 --[[
-    ALLVESZZ UNIVERSAL SCRIPT V2 (Premium Edition)
-    Theme: Red/Purple/Black
-    Credits: Allveszz
-    Status: Aimbot Instantâneo (No-Smoothness)
+    ALLVESZZ UNIVERSAL SCRIPT V3 (Premium Edition)
+    Status: 
+    - WallCheck Melhorado (Ignora vidros/items transparentes)
+    - Anti-Tremor (Sistema de Target Lock/Sticky Aim)
+    - Seletores de Cores (FOV e ESP)
+    - Toggle de FOV Visual
 ]]
 
 local Players = game:GetService("Players")
@@ -12,7 +14,50 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Cores do Tema
+-- Sistema de Cores
+local ColorList = {
+    {Name = "Red", Color = Color3.fromRGB(255, 50, 50)},
+    {Name = "Purple", Color = Color3.fromRGB(170, 0, 255)},
+    {Name = "Blue", Color = Color3.fromRGB(0, 170, 255)},
+    {Name = "Green", Color = Color3.fromRGB(50, 255, 100)}
+}
+
+-- Configurações
+local Settings = {
+    Aimbot = true,
+    ESP = true,
+    TeamCheck = false,
+    WallCheck = true, -- Ativado por padrão como pedido
+    AliveCheck = true,
+    ShowFOV = true,
+    FOVSize = 100,
+    TargetPart = "Head",
+    -- Índices das cores (1=Red, 2=Purple, etc)
+    FOVColorIndex = 2, -- Roxo padrão
+    ESPColorIndex = 1  -- Vermelho padrão
+}
+
+-- Variáveis de Controle
+local LockedTarget = nil -- Para evitar tremor (Lock Aim)
+local CurrentTargetPart = nil
+
+-- FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = Settings.ShowFOV
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = ColorList[Settings.FOVColorIndex].Color
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.NumSides = 64
+FOVCircle.Radius = Settings.FOVSize
+
+--------------------------------------------------------------------
+-- GUI / INTERFACE
+--------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AllveszzPremiumV3"
+ScreenGui.Parent = game.CoreGui
+
 local Theme = {
     Background = Color3.fromRGB(15, 15, 15),
     DarkContrast = Color3.fromRGB(25, 25, 25),
@@ -21,39 +66,6 @@ local Theme = {
     Text = Color3.fromRGB(240, 240, 240)
 }
 
--- Configurações
-local Settings = {
-    Aimbot = true,
-    ESP = true,
-    TeamCheck = false,
-    WallCheck = false,
-    AliveCheck = true,
-    FOVSize = 100,
-    TargetPart = "Head"
-}
-
--- Variáveis de Controle
-local Holding = false
-local AimTarget = nil
-
--- FOV Circle (Usando Drawing API para performance)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true
-FOVCircle.Thickness = 1.5
-FOVCircle.Color = Theme.Purple
-FOVCircle.Filled = false
-FOVCircle.Transparency = 1
-FOVCircle.NumSides = 64
-FOVCircle.Radius = Settings.FOVSize
-
---------------------------------------------------------------------
--- GUI / INTERFACE (DESIGN PROFISSIONAL)
---------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AllveszzPremium"
-ScreenGui.Parent = game.CoreGui
-
--- Efeito de Gradiente Global
 local function AddGradient(instance)
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new{
@@ -65,7 +77,7 @@ local function AddGradient(instance)
     return gradient
 end
 
--- 1. Botão Ícone (Flutuante)
+-- Botão Flutuante
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Name = "ToggleIcon"
 OpenBtn.Parent = ScreenGui
@@ -82,39 +94,36 @@ local btnStroke = Instance.new("UIStroke", OpenBtn)
 btnStroke.Thickness = 2
 AddGradient(btnStroke)
 
--- 2. Janela Principal
+-- Janela Principal
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Theme.Background
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-MainFrame.Size = UDim2.new(0, 300, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+MainFrame.Size = UDim2.new(0, 320, 0, 480) -- Aumentado para caber opções
 MainFrame.Visible = false
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-
--- Borda da Janela
 local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Thickness = 2
 AddGradient(MainStroke)
 
--- Título
+-- Header
 local Header = Instance.new("Frame")
 Header.Parent = MainFrame
 Header.BackgroundColor3 = Theme.DarkContrast
 Header.Size = UDim2.new(1, 0, 0, 50)
 Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
-
 local TitleText = Instance.new("TextLabel")
 TitleText.Parent = Header
 TitleText.BackgroundTransparency = 1
 TitleText.Size = UDim2.new(1, 0, 1, 0)
 TitleText.Font = Enum.Font.GothamBlack
-TitleText.Text = "ALLVESZZ // UNIVERSAL"
+TitleText.Text = "ALLVESZZ // V3"
 TitleText.TextColor3 = Theme.Text
 TitleText.TextSize = 16
-AddGradient(TitleText) -- Texto gradiente
+AddGradient(TitleText)
 
--- Arrastar Janela
+-- Sistema de Arraste
 local dragging, dragInput, dragStart, startPos
 Header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -132,31 +141,28 @@ UserInputService.InputChanged:Connect(function(input)
         MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-Header.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
+Header.InputEnded:Connect(function(input) dragging = false end)
 
--- Container dos Botões
+-- Container Scrollável
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
 Container.Position = UDim2.new(0, 0, 0, 60)
 Container.Size = UDim2.new(1, 0, 1, -70)
 Container.ScrollBarThickness = 2
-Container.CanvasSize = UDim2.new(0, 0, 1.2, 0) -- Espaço extra
-
+Container.CanvasSize = UDim2.new(0, 0, 1.4, 0)
 local Layout = Instance.new("UIListLayout")
 Layout.Parent = Container
 Layout.SortOrder = Enum.SortOrder.LayoutOrder
 Layout.Padding = UDim.new(0, 8)
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Função Criadora de Toggles Estilizados
-local function CreateToggle(text, refName, defaultVal, callback)
+-- UI Helpers
+local function CreateToggle(text, defaultVal, callback)
     local ToggleBtn = Instance.new("TextButton")
     ToggleBtn.Parent = Container
     ToggleBtn.BackgroundColor3 = Theme.DarkContrast
-    ToggleBtn.Size = UDim2.new(0, 260, 0, 40)
+    ToggleBtn.Size = UDim2.new(0, 280, 0, 40)
     ToggleBtn.Text = ""
     ToggleBtn.AutoButtonColor = false
     Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
@@ -180,25 +186,60 @@ local function CreateToggle(text, refName, defaultVal, callback)
     Instance.new("UICorner", Status).CornerRadius = UDim.new(0, 4)
     
     ToggleBtn.MouseButton1Click:Connect(function()
-        local newState = not (Status.BackgroundColor3 == Theme.Purple)
+        local isEnabled = (Status.BackgroundColor3 == Theme.Purple)
+        local newState = not isEnabled
         Status.BackgroundColor3 = newState and Theme.Purple or Color3.fromRGB(60,60,60)
-        
-        -- Efeito visual extra no botão
-        if newState then
-            Status.BackgroundColor3 = Theme.Red
-            wait(0.1)
-            Status.BackgroundColor3 = Theme.Purple
-        end
         callback(newState)
     end)
 end
 
--- Slider de FOV (Input Box estilizado)
+local function CreateColorButton(text, colorIndexKey, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Parent = Container
+    Btn.BackgroundColor3 = Theme.DarkContrast
+    Btn.Size = UDim2.new(0, 280, 0, 40)
+    Btn.Text = ""
+    Btn.AutoButtonColor = false
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+
+    local Label = Instance.new("TextLabel")
+    Label.Parent = Btn
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.Size = UDim2.new(0.5, 0, 1, 0)
+    Label.Font = Enum.Font.GothamBold
+    Label.Text = text
+    Label.TextColor3 = Theme.Text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextSize = 14
+
+    local ColorDisplay = Instance.new("TextLabel")
+    ColorDisplay.Parent = Btn
+    ColorDisplay.Position = UDim2.new(0.5, 0, 0, 0)
+    ColorDisplay.Size = UDim2.new(0.45, 0, 1, 0)
+    ColorDisplay.Font = Enum.Font.GothamBold
+    ColorDisplay.Text = ColorList[Settings[colorIndexKey]].Name
+    ColorDisplay.TextColor3 = ColorList[Settings[colorIndexKey]].Color
+    ColorDisplay.TextXAlignment = Enum.TextXAlignment.Right
+    ColorDisplay.BackgroundTransparency = 1
+    ColorDisplay.TextSize = 14
+
+    Btn.MouseButton1Click:Connect(function()
+        Settings[colorIndexKey] = Settings[colorIndexKey] + 1
+        if Settings[colorIndexKey] > #ColorList then Settings[colorIndexKey] = 1 end
+        
+        local newColorData = ColorList[Settings[colorIndexKey]]
+        ColorDisplay.Text = newColorData.Name
+        ColorDisplay.TextColor3 = newColorData.Color
+        callback(newColorData.Color)
+    end)
+end
+
 local function CreateFOVInput()
     local BoxFrame = Instance.new("Frame")
     BoxFrame.Parent = Container
     BoxFrame.BackgroundColor3 = Theme.DarkContrast
-    BoxFrame.Size = UDim2.new(0, 260, 0, 40)
+    BoxFrame.Size = UDim2.new(0, 280, 0, 40)
     Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
     
     local Label = Instance.new("TextLabel")
@@ -231,66 +272,81 @@ local function CreateFOVInput()
     end)
 end
 
--- Criando os Controles
-CreateToggle("AIMBOT ENABLED", "aim_tog", Settings.Aimbot, function(v) Settings.Aimbot = v end)
-CreateToggle("ESP NAMES", "esp_tog", Settings.ESP, function(v) Settings.ESP = v end)
-CreateToggle("TEAM CHECK", "team_tog", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
-CreateToggle("WALL CHECK", "wall_tog", Settings.WallCheck, function(v) Settings.WallCheck = v end)
-CreateToggle("ALIVE CHECK", "alive_tog", Settings.AliveCheck, function(v) Settings.AliveCheck = v end)
+-- --- CRIANDO OS BOTÕES ---
+CreateToggle("AIMBOT", Settings.Aimbot, function(v) Settings.Aimbot = v end)
+CreateToggle("WALL CHECK (Melhorado)", Settings.WallCheck, function(v) Settings.WallCheck = v end)
+CreateToggle("SHOW FOV CIRCLE", Settings.ShowFOV, function(v) 
+    Settings.ShowFOV = v 
+    FOVCircle.Visible = v
+end)
 CreateFOVInput()
+CreateColorButton("FOV COLOR", "FOVColorIndex", function(c) FOVCircle.Color = c end)
+CreateColorButton("ESP COLOR", "ESPColorIndex", function(c) end) -- Atualiza no loop do ESP
+CreateToggle("ESP NAMES", Settings.ESP, function(v) Settings.ESP = v end)
+CreateToggle("TEAM CHECK", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
+CreateToggle("ALIVE CHECK", Settings.AliveCheck, function(v) Settings.AliveCheck = v end)
 
 OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
 --------------------------------------------------------------------
--- LÓGICA DO AIMBOT & ESP
+-- LÓGICA DO SCRIPT
 --------------------------------------------------------------------
 
--- Função de ESP (BillboardGui)
-local ESP_Folder = Instance.new("Folder", game.CoreGui)
-ESP_Folder.Name = "Allveszz_ESP_Folder"
-
-local function UpdateESP()
-    -- Limpa ESPs antigos
-    ESP_Folder:ClearAllChildren()
+-- Wall Check Inteligente
+-- Verifica se a parede é transparente ou se é o próprio alvo
+local function IsVisible(targetPart)
+    if not Settings.WallCheck then return true end
     
-    if not Settings.ESP then return end
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            -- Checks
-            if Settings.AliveCheck and player.Character.Humanoid.Health <= 0 then continue end
-            if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
-
-            local Head = player.Character.Head
-            
-            local bb = Instance.new("BillboardGui")
-            bb.Parent = ESP_Folder
-            bb.Adornee = Head
-            bb.Size = UDim2.new(0, 100, 0, 50)
-            bb.StudsOffset = Vector3.new(0, 2, 0)
-            bb.AlwaysOnTop = true
-
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Parent = bb
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Size = UDim2.new(1, 0, 1, 0)
-            nameLabel.Text = player.Name
-            nameLabel.Font = Enum.Font.GothamBold
-            nameLabel.TextSize = 14
-            -- Cor Vermelha para inimigos, branca padrão
-            nameLabel.TextColor3 = (player.Team ~= LocalPlayer.Team) and Theme.Red or Color3.new(1,1,1)
-            nameLabel.TextStrokeTransparency = 0.5
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.IgnoreWater = true
+    
+    local result = Workspace:Raycast(origin, direction, params)
+    
+    if result then
+        -- Se bater no alvo ou descendente do alvo, é visível
+        if result.Instance:IsDescendantOf(targetPart.Parent) then
+            return true
         end
+        
+        -- Correção: Se bater em vidro ou algo transparente (ex: cercas vazadas), considera visível
+        if result.Instance.Transparency > 0.3 or not result.Instance.CanCollide then
+            return true
+        end
+        
+        return false -- Tem parede sólida na frente
     end
+    
+    return true -- Nada na frente
 end
 
--- Lógica de Aimbot Centralizado
-local function GetClosestToCenter()
+local function GetTarget()
+    -- Lógica Anti-Tremor (Target Lock)
+    -- Se já temos um alvo, verificamos se ele ainda é válido antes de procurar outro
+    if LockedTarget and LockedTarget.Parent and LockedTarget.Parent:FindFirstChild("Humanoid") then
+        local hum = LockedTarget.Parent.Humanoid
+        local pos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Position)
+        local distToCenter = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+        
+        -- Condições para MANTER o alvo atual:
+        -- 1. Vivo
+        -- 2. Dentro do FOV
+        -- 3. Visível (WallCheck)
+        -- 4. Na tela
+        if (hum.Health > 0) and (distToCenter <= Settings.FOVSize) and onScreen and IsVisible(LockedTarget) then
+            return LockedTarget
+        end
+    end
+
+    -- Se o alvo antigo não serve mais, procura um novo (o mais próximo do centro)
     local closestDist = math.huge
     local target = nil
-    
     local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, player in pairs(Players:GetPlayers()) do
@@ -301,58 +357,77 @@ local function GetClosestToCenter()
             if Settings.AliveCheck and hum.Health <= 0 then continue end
             if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
 
-            local partPos, onScreen = Camera:WorldToViewportPoint(char[Settings.TargetPart].Position)
+            local part = char[Settings.TargetPart]
+            local partPos, onScreen = Camera:WorldToViewportPoint(part.Position)
             
             if onScreen then
                 local dist = (Vector2.new(partPos.X, partPos.Y) - Center).Magnitude
                 
-                -- Verifica se está dentro do FOV e é o mais próximo
                 if dist < Settings.FOVSize and dist < closestDist then
-                    -- Wall Check
-                    if Settings.WallCheck then
-                        local origin = Camera.CFrame.Position
-                        local dir = (char[Settings.TargetPart].Position - origin).Unit * (dist + 5) -- pequeno buffer
-                        local params = RaycastParams.new()
-                        params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-                        params.FilterType = Enum.RaycastFilterType.Exclude
-                        
-                        local result = Workspace:Raycast(origin, dir, params)
-                        if result and result.Instance:IsDescendantOf(char) then
-                            closestDist = dist
-                            target = char[Settings.TargetPart]
-                        end
-                    else
+                    if IsVisible(part) then
                         closestDist = dist
-                        target = char[Settings.TargetPart]
+                        target = part
                     end
                 end
             end
         end
     end
+    
+    LockedTarget = target -- Atualiza o alvo travado
     return target
 end
 
--- Loops Principais
+-- Loop de Aimbot
 RunService.RenderStepped:Connect(function()
-    -- Manter FOV no centro
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     FOVCircle.Radius = Settings.FOVSize
+    FOVCircle.Visible = Settings.ShowFOV -- Atualiza visibilidade
     
-    -- Aimbot (HARD LOCK / SEM SUAVIZAÇÃO)
     if Settings.Aimbot then
-        local target = GetClosestToCenter()
+        local target = GetTarget()
         if target then
-            -- Removemos o Lerp para "grudar" instantaneamente
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    else
+        LockedTarget = nil -- Reseta se desligar o aimbot
+    end
+end)
+
+-- Loop de ESP
+local ESP_Folder = Instance.new("Folder", game.CoreGui)
+ESP_Folder.Name = "ESP_Folder_V3"
+
+spawn(function()
+    while wait(0.5) do
+        ESP_Folder:ClearAllChildren()
+        if not Settings.ESP then continue end
+
+        local currentColor = ColorList[Settings.ESPColorIndex].Color
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                if Settings.AliveCheck and player.Character.Humanoid.Health <= 0 then continue end
+                if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+                local bb = Instance.new("BillboardGui")
+                bb.Parent = ESP_Folder
+                bb.Adornee = player.Character.Head
+                bb.Size = UDim2.new(0, 100, 0, 50)
+                bb.StudsOffset = Vector3.new(0, 2, 0)
+                bb.AlwaysOnTop = true
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Parent = bb
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.Text = player.Name
+                nameLabel.Font = Enum.Font.GothamBold
+                nameLabel.TextSize = 14
+                nameLabel.TextColor3 = currentColor -- Usa a cor selecionada
+                nameLabel.TextStrokeTransparency = 0.5
+            end
         end
     end
 end)
 
--- Atualiza o ESP a cada meio segundo para não lagar
-spawn(function()
-    while wait(0.5) do
-        pcall(UpdateESP)
-    end
-end)
-
-print("Allveszz V2 Loaded (Instant Lock Mode)")
+print("Allveszz V3 Loaded - Anti-Jitter & Smart WallCheck")
