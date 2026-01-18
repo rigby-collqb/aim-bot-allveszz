@@ -1,25 +1,29 @@
 --[[
-    ALLVESZZ UNIVERSAL SCRIPT V3 (Premium Edition)
-    Status: 
-    - WallCheck Melhorado (Ignora vidros/items transparentes)
-    - Anti-Tremor (Sistema de Target Lock/Sticky Aim)
-    - Seletores de Cores (FOV e ESP)
-    - Toggle de FOV Visual
+    ALLVESZZ UNIVERSAL SCRIPT V4 (GOD MODE EDITION)
+    Credits: ALLVESZZ (O Criador)
+    
+    Update Logs:
+    - Wall Check Rigoroso (Não vara parede nem grade sólida)
+    - Ícone de Caveira (Headshot)
+    - UI Animada com TweenService
+    - Marca d'água Permanente
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
 -- Sistema de Cores
 local ColorList = {
-    {Name = "Red", Color = Color3.fromRGB(255, 50, 50)},
-    {Name = "Purple", Color = Color3.fromRGB(170, 0, 255)},
-    {Name = "Blue", Color = Color3.fromRGB(0, 170, 255)},
-    {Name = "Green", Color = Color3.fromRGB(50, 255, 100)}
+    {Name = "Blood Red", Color = Color3.fromRGB(255, 30, 30)},
+    {Name = "Electric Purple", Color = Color3.fromRGB(160, 30, 255)},
+    {Name = "Cyan Blue", Color = Color3.fromRGB(30, 230, 255)},
+    {Name = "Toxic Green", Color = Color3.fromRGB(50, 255, 80)}
 }
 
 -- Configurações
@@ -27,19 +31,17 @@ local Settings = {
     Aimbot = true,
     ESP = true,
     TeamCheck = false,
-    WallCheck = true, -- Ativado por padrão como pedido
+    WallCheck = true, -- Agora RIGOROSO
     AliveCheck = true,
     ShowFOV = true,
-    FOVSize = 100,
+    FOVSize = 120,
     TargetPart = "Head",
-    -- Índices das cores (1=Red, 2=Purple, etc)
-    FOVColorIndex = 2, -- Roxo padrão
-    ESPColorIndex = 1  -- Vermelho padrão
+    FOVColorIndex = 2, -- Roxo
+    ESPColorIndex = 1  -- Vermelho
 }
 
--- Variáveis de Controle
-local LockedTarget = nil -- Para evitar tremor (Lock Aim)
-local CurrentTargetPart = nil
+-- Variáveis Globais
+local LockedTarget = nil
 
 -- FOV Circle
 local FOVCircle = Drawing.new("Circle")
@@ -47,83 +49,131 @@ FOVCircle.Visible = Settings.ShowFOV
 FOVCircle.Thickness = 1.5
 FOVCircle.Color = ColorList[Settings.FOVColorIndex].Color
 FOVCircle.Filled = false
-FOVCircle.Transparency = 1
+FOVCircle.Transparency = 0.8
 FOVCircle.NumSides = 64
 FOVCircle.Radius = Settings.FOVSize
 
 --------------------------------------------------------------------
--- GUI / INTERFACE
+-- INTERFACE (UI) SUPER PREMIUM
 --------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AllveszzPremiumV3"
+ScreenGui.Name = "AllveszzGodMode"
 ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Theme = {
-    Background = Color3.fromRGB(15, 15, 15),
-    DarkContrast = Color3.fromRGB(25, 25, 25),
+    Bg = Color3.fromRGB(12, 12, 12),
+    Item = Color3.fromRGB(25, 25, 25),
     Purple = Color3.fromRGB(170, 0, 255),
-    Red = Color3.fromRGB(255, 50, 50),
-    Text = Color3.fromRGB(240, 240, 240)
+    Red = Color3.fromRGB(255, 40, 40),
+    Text = Color3.fromRGB(255, 255, 255)
 }
 
-local function AddGradient(instance)
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Theme.Purple),
-        ColorSequenceKeypoint.new(1.00, Theme.Red)
+-- Gradiente Funções
+local function AddGradient(obj)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.0, Theme.Purple),
+        ColorSequenceKeypoint.new(1.0, Theme.Red)
     }
-    gradient.Rotation = 45
-    gradient.Parent = instance
-    return gradient
+    g.Rotation = 45
+    g.Parent = obj
+    return g
 end
 
--- Botão Flutuante
-local OpenBtn = Instance.new("TextButton")
-OpenBtn.Name = "ToggleIcon"
+-- MARCA D'ÁGUA (CRÉDITOS EXPOSTOS)
+local Watermark = Instance.new("TextLabel")
+Watermark.Parent = ScreenGui
+Watermark.BackgroundTransparency = 1
+Watermark.Position = UDim2.new(0.85, -20, 0.95, -20)
+Watermark.Size = UDim2.new(0.15, 0, 0.05, 0)
+Watermark.Font = Enum.Font.GothamBlack
+Watermark.Text = "ALLVESZZ // SCRIPT"
+Watermark.TextColor3 = Theme.Text
+Watermark.TextSize = 18
+Watermark.TextTransparency = 0.5
+Watermark.TextXAlignment = Enum.TextXAlignment.Right
+
+-- BOTÃO ÍCONE (CAVEIRA)
+local OpenBtn = Instance.new("ImageButton")
+OpenBtn.Name = "SkullIcon"
 OpenBtn.Parent = ScreenGui
-OpenBtn.BackgroundColor3 = Theme.DarkContrast
-OpenBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-OpenBtn.Text = "A"
-OpenBtn.Font = Enum.Font.GothamBlack
-OpenBtn.TextColor3 = Theme.Text
-OpenBtn.TextSize = 28
+OpenBtn.BackgroundColor3 = Theme.Item
+OpenBtn.Position = UDim2.new(0.02, 0, 0.45, 0)
+OpenBtn.Size = UDim2.new(0, 60, 0, 60)
+-- ID de Caveira/Headshot
+OpenBtn.Image = "rbxassetid://300666687" -- Skull Icon clássico
+OpenBtn.ImageColor3 = Theme.Purple
 OpenBtn.AutoButtonColor = false
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 12)
 local btnStroke = Instance.new("UIStroke", OpenBtn)
 btnStroke.Thickness = 2
 AddGradient(btnStroke)
 
--- Janela Principal
+-- Efeito de clique no ícone
+OpenBtn.MouseButton1Click:Connect(function()
+    local targetPos = UDim2.new(0.5, -160, 0.5, -225)
+    local mainFrame = ScreenGui:FindFirstChild("MainFrame")
+    
+    if mainFrame.Visible then
+        -- Animação de Fechar
+        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1})
+        tween:Play()
+        tween.Completed:Connect(function() mainFrame.Visible = false end)
+    else
+        -- Animação de Abrir
+        mainFrame.Visible = true
+        mainFrame.Size = UDim2.new(0, 0, 0, 0)
+        mainFrame.BackgroundTransparency = 1
+        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 320, 0, 450), BackgroundTransparency = 0.05})
+        tween:Play()
+    end
+end)
+
+-- JANELA PRINCIPAL
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Theme.Background
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-MainFrame.Size = UDim2.new(0, 320, 0, 480) -- Aumentado para caber opções
+MainFrame.BackgroundColor3 = Theme.Bg
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 320, 0, 450)
 MainFrame.Visible = false
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+MainFrame.ClipsDescendants = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Thickness = 2
 AddGradient(MainStroke)
 
--- Header
+-- Título Gigante
 local Header = Instance.new("Frame")
 Header.Parent = MainFrame
-Header.BackgroundColor3 = Theme.DarkContrast
-Header.Size = UDim2.new(1, 0, 0, 50)
-Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
-local TitleText = Instance.new("TextLabel")
-TitleText.Parent = Header
-TitleText.BackgroundTransparency = 1
-TitleText.Size = UDim2.new(1, 0, 1, 0)
-TitleText.Font = Enum.Font.GothamBlack
-TitleText.Text = "ALLVESZZ // V3"
-TitleText.TextColor3 = Theme.Text
-TitleText.TextSize = 16
-AddGradient(TitleText)
+Header.BackgroundColor3 = Color3.new(0,0,0)
+Header.BackgroundTransparency = 0.5
+Header.Size = UDim2.new(1, 0, 0, 60)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
 
--- Sistema de Arraste
+local Title = Instance.new("TextLabel")
+Title.Parent = Header
+Title.Size = UDim2.new(1, 0, 0.7, 0)
+Title.Position = UDim2.new(0, 0, 0.15, 0)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBlack
+Title.Text = "ALLVESZZ"
+Title.TextColor3 = Theme.Text
+Title.TextSize = 24
+AddGradient(Title)
+
+local SubTitle = Instance.new("TextLabel")
+SubTitle.Parent = Header
+SubTitle.Size = UDim2.new(1, 0, 0.3, 0)
+SubTitle.Position = UDim2.new(0, 0, 0.7, 0)
+SubTitle.BackgroundTransparency = 1
+SubTitle.Font = Enum.Font.Code
+SubTitle.Text = "PREMIUM UNIVERSAL // V4"
+SubTitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+SubTitle.TextSize = 11
+
+-- Sistema de Arrastar
 local dragging, dragInput, dragStart, startPos
 Header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -143,291 +193,298 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 Header.InputEnded:Connect(function(input) dragging = false end)
 
--- Container Scrollável
+-- Container
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0, 0, 0, 60)
-Container.Size = UDim2.new(1, 0, 1, -70)
-Container.ScrollBarThickness = 2
-Container.CanvasSize = UDim2.new(0, 0, 1.4, 0)
+Container.Position = UDim2.new(0, 0, 0, 70)
+Container.Size = UDim2.new(1, 0, 1, -80)
+Container.ScrollBarThickness = 3
+Container.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+
 local Layout = Instance.new("UIListLayout")
 Layout.Parent = Container
 Layout.SortOrder = Enum.SortOrder.LayoutOrder
-Layout.Padding = UDim.new(0, 8)
+Layout.Padding = UDim.new(0, 6)
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- UI Helpers
+-- Helper Toggle
 local function CreateToggle(text, defaultVal, callback)
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Parent = Container
-    ToggleBtn.BackgroundColor3 = Theme.DarkContrast
-    ToggleBtn.Size = UDim2.new(0, 280, 0, 40)
-    ToggleBtn.Text = ""
-    ToggleBtn.AutoButtonColor = false
-    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+    local Btn = Instance.new("TextButton")
+    Btn.Parent = Container
+    Btn.BackgroundColor3 = Theme.Item
+    Btn.Size = UDim2.new(0, 290, 0, 38)
+    Btn.Text = ""
+    Btn.AutoButtonColor = false
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
     
-    local Label = Instance.new("TextLabel")
-    Label.Parent = ToggleBtn
-    Label.BackgroundTransparency = 1
-    Label.Position = UDim2.new(0, 15, 0, 0)
-    Label.Size = UDim2.new(0.7, 0, 1, 0)
-    Label.Font = Enum.Font.GothamBold
-    Label.Text = text
-    Label.TextColor3 = Theme.Text
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextSize = 14
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Btn
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = text
+    Title.TextColor3 = Theme.Text
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextSize = 13
     
-    local Status = Instance.new("Frame")
-    Status.Parent = ToggleBtn
-    Status.Position = UDim2.new(0.85, 0, 0.5, -8)
-    Status.Size = UDim2.new(0, 16, 0, 16)
-    Status.BackgroundColor3 = defaultVal and Theme.Purple or Color3.fromRGB(60,60,60)
-    Instance.new("UICorner", Status).CornerRadius = UDim.new(0, 4)
+    local Indicator = Instance.new("Frame")
+    Indicator.Parent = Btn
+    Indicator.Position = UDim2.new(0.88, 0, 0.5, -6)
+    Indicator.Size = UDim2.new(0, 12, 0, 12)
+    Indicator.BackgroundColor3 = defaultVal and Theme.Purple or Color3.fromRGB(50,50,50)
+    Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
     
-    ToggleBtn.MouseButton1Click:Connect(function()
-        local isEnabled = (Status.BackgroundColor3 == Theme.Purple)
-        local newState = not isEnabled
-        Status.BackgroundColor3 = newState and Theme.Purple or Color3.fromRGB(60,60,60)
+    -- Stroke no indicador
+    local indStroke = Instance.new("UIStroke", Indicator)
+    indStroke.Thickness = 1
+    indStroke.Color = Color3.fromRGB(80,80,80)
+
+    Btn.MouseButton1Click:Connect(function()
+        local isOn = (Indicator.BackgroundColor3 == Theme.Purple)
+        local newState = not isOn
+        
+        -- Animação Simples
+        if newState then
+            Indicator.BackgroundColor3 = Theme.Purple
+            indStroke.Color = Theme.Red
+        else
+            Indicator.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            indStroke.Color = Color3.fromRGB(80,80,80)
+        end
         callback(newState)
     end)
 end
 
-local function CreateColorButton(text, colorIndexKey, callback)
+-- Helper Color Picker
+local function CreateColorSelector(text, key, callback)
     local Btn = Instance.new("TextButton")
     Btn.Parent = Container
-    Btn.BackgroundColor3 = Theme.DarkContrast
-    Btn.Size = UDim2.new(0, 280, 0, 40)
+    Btn.BackgroundColor3 = Theme.Item
+    Btn.Size = UDim2.new(0, 290, 0, 38)
     Btn.Text = ""
     Btn.AutoButtonColor = false
     Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-
-    local Label = Instance.new("TextLabel")
-    Label.Parent = Btn
-    Label.BackgroundTransparency = 1
-    Label.Position = UDim2.new(0, 15, 0, 0)
-    Label.Size = UDim2.new(0.5, 0, 1, 0)
-    Label.Font = Enum.Font.GothamBold
-    Label.Text = text
-    Label.TextColor3 = Theme.Text
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextSize = 14
-
-    local ColorDisplay = Instance.new("TextLabel")
-    ColorDisplay.Parent = Btn
-    ColorDisplay.Position = UDim2.new(0.5, 0, 0, 0)
-    ColorDisplay.Size = UDim2.new(0.45, 0, 1, 0)
-    ColorDisplay.Font = Enum.Font.GothamBold
-    ColorDisplay.Text = ColorList[Settings[colorIndexKey]].Name
-    ColorDisplay.TextColor3 = ColorList[Settings[colorIndexKey]].Color
-    ColorDisplay.TextXAlignment = Enum.TextXAlignment.Right
-    ColorDisplay.BackgroundTransparency = 1
-    ColorDisplay.TextSize = 14
+    
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Btn
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Size = UDim2.new(0.5, 0, 1, 0)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = text
+    Title.TextColor3 = Theme.Text
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextSize = 13
+    
+    local Preview = Instance.new("TextLabel")
+    Preview.Parent = Btn
+    Preview.BackgroundTransparency = 1
+    Preview.Position = UDim2.new(0.5, 0, 0, 0)
+    Preview.Size = UDim2.new(0.45, 0, 1, 0)
+    Preview.Font = Enum.Font.GothamBlack
+    Preview.Text = ColorList[Settings[key]].Name
+    Preview.TextColor3 = ColorList[Settings[key]].Color
+    Preview.TextXAlignment = Enum.TextXAlignment.Right
+    Preview.TextSize = 12
 
     Btn.MouseButton1Click:Connect(function()
-        Settings[colorIndexKey] = Settings[colorIndexKey] + 1
-        if Settings[colorIndexKey] > #ColorList then Settings[colorIndexKey] = 1 end
+        Settings[key] = Settings[key] + 1
+        if Settings[key] > #ColorList then Settings[key] = 1 end
         
-        local newColorData = ColorList[Settings[colorIndexKey]]
-        ColorDisplay.Text = newColorData.Name
-        ColorDisplay.TextColor3 = newColorData.Color
-        callback(newColorData.Color)
+        local newData = ColorList[Settings[key]]
+        Preview.Text = newData.Name
+        Preview.TextColor3 = newData.Color
+        callback(newData.Color)
     end)
 end
 
+-- Input de FOV
 local function CreateFOVInput()
-    local BoxFrame = Instance.new("Frame")
-    BoxFrame.Parent = Container
-    BoxFrame.BackgroundColor3 = Theme.DarkContrast
-    BoxFrame.Size = UDim2.new(0, 280, 0, 40)
-    Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
+    local Frame = Instance.new("Frame")
+    Frame.Parent = Container
+    Frame.BackgroundColor3 = Theme.Item
+    Frame.Size = UDim2.new(0, 290, 0, 38)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
     
-    local Label = Instance.new("TextLabel")
-    Label.Parent = BoxFrame
-    Label.BackgroundTransparency = 1
-    Label.Position = UDim2.new(0, 15, 0, 0)
-    Label.Size = UDim2.new(0.5, 0, 1, 0)
-    Label.Font = Enum.Font.GothamBold
-    Label.Text = "FOV Radius"
-    Label.TextColor3 = Theme.Text
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextSize = 14
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Frame
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Size = UDim2.new(0.5, 0, 1, 0)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "FOV SIZE"
+    Title.TextColor3 = Theme.Text
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextSize = 13
     
-    local Input = Instance.new("TextBox")
-    Input.Parent = BoxFrame
-    Input.BackgroundTransparency = 1
-    Input.Position = UDim2.new(0.6, 0, 0, 0)
-    Input.Size = UDim2.new(0.35, 0, 1, 0)
-    Input.Font = Enum.Font.GothamBold
-    Input.Text = tostring(Settings.FOVSize)
-    Input.TextColor3 = Theme.Red
-    Input.TextSize = 14
+    local Box = Instance.new("TextBox")
+    Box.Parent = Frame
+    Box.BackgroundTransparency = 1
+    Box.Position = UDim2.new(0.7, 0, 0, 0)
+    Box.Size = UDim2.new(0.25, 0, 1, 0)
+    Box.Font = Enum.Font.GothamBold
+    Box.Text = tostring(Settings.FOVSize)
+    Box.TextColor3 = Theme.Red
+    Box.TextSize = 13
     
-    Input.FocusLost:Connect(function()
-        local num = tonumber(Input.Text)
-        if num then
-            Settings.FOVSize = num
-            FOVCircle.Radius = num
+    Box.FocusLost:Connect(function()
+        local n = tonumber(Box.Text)
+        if n then 
+            Settings.FOVSize = n
+            FOVCircle.Radius = n
         end
     end)
 end
 
--- --- CRIANDO OS BOTÕES ---
-CreateToggle("AIMBOT", Settings.Aimbot, function(v) Settings.Aimbot = v end)
-CreateToggle("WALL CHECK (Melhorado)", Settings.WallCheck, function(v) Settings.WallCheck = v end)
-CreateToggle("SHOW FOV CIRCLE", Settings.ShowFOV, function(v) 
-    Settings.ShowFOV = v 
-    FOVCircle.Visible = v
-end)
+-- Criando Botões
+CreateToggle("ATIVAR AIMBOT", Settings.Aimbot, function(v) Settings.Aimbot = v end)
+CreateToggle("WALL CHECK (RIGOROSO)", Settings.WallCheck, function(v) Settings.WallCheck = v end)
 CreateFOVInput()
-CreateColorButton("FOV COLOR", "FOVColorIndex", function(c) FOVCircle.Color = c end)
-CreateColorButton("ESP COLOR", "ESPColorIndex", function(c) end) -- Atualiza no loop do ESP
-CreateToggle("ESP NAMES", Settings.ESP, function(v) Settings.ESP = v end)
-CreateToggle("TEAM CHECK", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
-CreateToggle("ALIVE CHECK", Settings.AliveCheck, function(v) Settings.AliveCheck = v end)
-
-OpenBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
+CreateToggle("DESENHAR FOV", Settings.ShowFOV, function(v) Settings.ShowFOV = v; FOVCircle.Visible = v end)
+CreateColorSelector("COR DO FOV", "FOVColorIndex", function(c) FOVCircle.Color = c end)
+CreateToggle("ESP NOMES", Settings.ESP, function(v) Settings.ESP = v end)
+CreateColorSelector("COR DO ESP", "ESPColorIndex", function(c) end) -- Loop trata isso
+CreateToggle("CHECK DE TIME", Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
 
 --------------------------------------------------------------------
--- LÓGICA DO SCRIPT
+-- LÓGICA DO AIMBOT REFORÇADA (WALLCHECK FIX)
 --------------------------------------------------------------------
 
--- Wall Check Inteligente
--- Verifica se a parede é transparente ou se é o próprio alvo
-local function IsVisible(targetPart)
+local function IsPathClear(targetPart)
     if not Settings.WallCheck then return true end
     
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin)
+    local Origin = Camera.CFrame.Position
+    local Direction = targetPart.Position - Origin
     
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.IgnoreWater = true
+    -- Raycast Parameters RIGOROSOS
+    local Params = RaycastParams.new()
+    Params.FilterType = Enum.RaycastFilterType.Exclude
+    -- Ignora o jogador local e a câmera, mas detecta TODO o resto
+    Params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    Params.IgnoreWater = false -- Água bloqueia bala? Depende, mas vamos deixar false.
     
-    local result = Workspace:Raycast(origin, direction, params)
+    local Result = Workspace:Raycast(Origin, Direction, Params)
     
-    if result then
-        -- Se bater no alvo ou descendente do alvo, é visível
-        if result.Instance:IsDescendantOf(targetPart.Parent) then
+    if Result then
+        -- Se o raio bateu em algo
+        if Result.Instance:IsDescendantOf(targetPart.Parent) then
+            -- Se bateu no inimigo, tá limpo
             return true
+        else
+            -- Se bateu em qualquer outra coisa (parede, grade, chão)
+            -- Bloqueia IMEDIATAMENTE.
+            return false 
         end
-        
-        -- Correção: Se bater em vidro ou algo transparente (ex: cercas vazadas), considera visível
-        if result.Instance.Transparency > 0.3 or not result.Instance.CanCollide then
-            return true
-        end
-        
-        return false -- Tem parede sólida na frente
     end
     
-    return true -- Nada na frente
+    return true
 end
 
 local function GetTarget()
-    -- Lógica Anti-Tremor (Target Lock)
-    -- Se já temos um alvo, verificamos se ele ainda é válido antes de procurar outro
+    -- Prioriza o alvo que já estamos travados (Anti-Tremor)
     if LockedTarget and LockedTarget.Parent and LockedTarget.Parent:FindFirstChild("Humanoid") then
-        local hum = LockedTarget.Parent.Humanoid
-        local pos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Position)
-        local distToCenter = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-        
-        -- Condições para MANTER o alvo atual:
-        -- 1. Vivo
-        -- 2. Dentro do FOV
-        -- 3. Visível (WallCheck)
-        -- 4. Na tela
-        if (hum.Health > 0) and (distToCenter <= Settings.FOVSize) and onScreen and IsVisible(LockedTarget) then
-            return LockedTarget
+        local Hum = LockedTarget.Parent.Humanoid
+        if Hum.Health > 0 and IsPathClear(LockedTarget) then
+            local pos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Position)
+            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+            if onScreen and dist <= Settings.FOVSize then
+                return LockedTarget
+            end
         end
     end
 
-    -- Se o alvo antigo não serve mais, procura um novo (o mais próximo do centro)
-    local closestDist = math.huge
-    local target = nil
-    local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local Closest = nil
+    local MinDist = math.huge
+    local Center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(Settings.TargetPart) then
-            local char = player.Character
-            local hum = char:FindFirstChild("Humanoid")
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(Settings.TargetPart) then
+            local Char = v.Character
+            local Hum = Char:FindFirstChild("Humanoid")
             
-            if Settings.AliveCheck and hum.Health <= 0 then continue end
-            if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
-
-            local part = char[Settings.TargetPart]
-            local partPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            -- Checks básicos
+            if Settings.AliveCheck and Hum.Health <= 0 then continue end
+            if Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
             
-            if onScreen then
-                local dist = (Vector2.new(partPos.X, partPos.Y) - Center).Magnitude
+            local Part = Char[Settings.TargetPart]
+            local Pos, OnScreen = Camera:WorldToViewportPoint(Part.Position)
+            
+            if OnScreen then
+                local Dist = (Vector2.new(Pos.X, Pos.Y) - Center).Magnitude
                 
-                if dist < Settings.FOVSize and dist < closestDist then
-                    if IsVisible(part) then
-                        closestDist = dist
-                        target = part
+                if Dist < Settings.FOVSize and Dist < MinDist then
+                    -- Wall Check na seleção do alvo
+                    if IsPathClear(Part) then
+                        MinDist = Dist
+                        Closest = Part
                     end
                 end
             end
         end
     end
     
-    LockedTarget = target -- Atualiza o alvo travado
-    return target
+    LockedTarget = Closest
+    return Closest
 end
 
--- Loop de Aimbot
 RunService.RenderStepped:Connect(function()
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     FOVCircle.Radius = Settings.FOVSize
-    FOVCircle.Visible = Settings.ShowFOV -- Atualiza visibilidade
     
     if Settings.Aimbot then
-        local target = GetTarget()
-        if target then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        local T = GetTarget()
+        if T then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, T.Position)
         end
     else
-        LockedTarget = nil -- Reseta se desligar o aimbot
+        LockedTarget = nil
     end
 end)
 
--- Loop de ESP
-local ESP_Folder = Instance.new("Folder", game.CoreGui)
-ESP_Folder.Name = "ESP_Folder_V3"
+--------------------------------------------------------------------
+-- ESP OTIMIZADO
+--------------------------------------------------------------------
+local ESPGroup = Instance.new("Folder", game.CoreGui)
+ESPGroup.Name = "AllveszzESP"
 
 spawn(function()
     while wait(0.5) do
-        ESP_Folder:ClearAllChildren()
+        ESPGroup:ClearAllChildren()
         if not Settings.ESP then continue end
-
-        local currentColor = ColorList[Settings.ESPColorIndex].Color
-
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                if Settings.AliveCheck and player.Character.Humanoid.Health <= 0 then continue end
-                if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
-
+        
+        local CorAtual = ColorList[Settings.ESPColorIndex].Color
+        
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                if Settings.AliveCheck and v.Character.Humanoid.Health <= 0 then continue end
+                if Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
+                
                 local bb = Instance.new("BillboardGui")
-                bb.Parent = ESP_Folder
-                bb.Adornee = player.Character.Head
+                bb.Parent = ESPGroup
+                bb.Adornee = v.Character.Head
                 bb.Size = UDim2.new(0, 100, 0, 50)
                 bb.StudsOffset = Vector3.new(0, 2, 0)
                 bb.AlwaysOnTop = true
-
-                local nameLabel = Instance.new("TextLabel")
-                nameLabel.Parent = bb
-                nameLabel.BackgroundTransparency = 1
-                nameLabel.Size = UDim2.new(1, 0, 1, 0)
-                nameLabel.Text = player.Name
-                nameLabel.Font = Enum.Font.GothamBold
-                nameLabel.TextSize = 14
-                nameLabel.TextColor3 = currentColor -- Usa a cor selecionada
-                nameLabel.TextStrokeTransparency = 0.5
+                
+                local txt = Instance.new("TextLabel")
+                txt.Parent = bb
+                txt.Size = UDim2.new(1, 0, 1, 0)
+                txt.BackgroundTransparency = 1
+                txt.Text = v.Name
+                txt.TextColor3 = CorAtual
+                txt.Font = Enum.Font.GothamBlack
+                txt.TextSize = 12
+                txt.TextStrokeTransparency = 0.5
             end
         end
     end
 end)
 
-print("Allveszz V3 Loaded - Anti-Jitter & Smart WallCheck")
+-- Notificação de Carregamento
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "ALLVESZZ V4",
+    Text = "Script Carregado com Sucesso!",
+    Duration = 5
+})
