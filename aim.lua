@@ -56,7 +56,7 @@ local Settings = {
     FOVSize = 120,
     FOVColorIdx = 1,
     
-    DiscordLink = "https://discord.gg/SEU_LINK_AQUI"
+    DiscordLink = "https://discord.gg/4fkGEpx847"
 }
 
 local LockedTarget = nil
@@ -286,7 +286,7 @@ OpenBtn.Name = "IconA"
 OpenBtn.Size = UDim2.new(0, 55, 0, 55)
 OpenBtn.Position = UDim2.new(0.01, 0, 0.45, 0)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-OpenBtn.Text = "𝒜"
+OpenBtn.Text = "A"
 OpenBtn.Font = Enum.Font.Sarpanch
 OpenBtn.TextColor3 = Color3.fromRGB(160, 30, 255)
 OpenBtn.TextSize = 35
